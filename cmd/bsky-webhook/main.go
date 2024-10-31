@@ -241,9 +241,8 @@ func sendToSlack(jetstreamMessageStr string, bskyMessage BskyMessage, imageURL s
 			AuthorName: fmt.Sprintf("%s (@%s)", profile.Name, profile.Handle),
 			AuthorIcon: profile.AvatarURL,
 			AuthorLink: fmt.Sprintf("https://bsky.app/profile/%s", profile.Handle),
-			Text:       bskyMessage.Commit.Record.Text,
+			Text:       fmt.Sprintf("%s\n[View post on Bluesky ↗](%s)", bskyMessage.Commit.Record.Text, bskyMessage.toURL(&profile.Handle)),
 			ImageUrl:   imageURL,
-			Footer:     bskyMessage.toURL(&profile.Handle),
 		},
 	}
 
