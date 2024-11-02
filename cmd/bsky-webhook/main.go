@@ -18,6 +18,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/karalabe/go-bluesky"
+	"github.com/klauspost/compress/zstd"
 )
 
 type BskyMessage struct {
@@ -101,8 +102,16 @@ var jetstreams = []string{
 	"jetstream2.us-west.bsky.network",
 }
 
+var ZSTDDictionary []byte
+
 func main() {
 	flag.Parse()
+
+	// add zstd decoder
+	decoder, err := zstd.NewReader(nil, zstd.WithDecoderDicts(ZSTDDictionary))
+	if err != nil {
+		log.Fatalf("failed to create zstd decoder: %w", err)
+	}
 
 	if *webhookUrl == "" {
 		log.Fatalf("missing slack webhook url in env")
@@ -126,7 +135,7 @@ func main() {
 		wsUrl := url.URL{Scheme: "wss", Host: currentAddr, Path: "/subscribe", RawQuery: "wantedCollections=app.bsky.feed.post"}
 		slog.Info("ws connecting", "url", wsUrl.String())
 
-		err := websocketConnection(wsUrl)
+		err := websocketConnection(wsUrl, decoder)
 		slog.Error("ws connection", "url", wsUrl, "err", err)
 
 		if *addr == "" {
@@ -142,8 +151,13 @@ func main() {
 	}
 }
 
-func websocketConnection(wsUrl url.URL) error {
-	c, _, err := websocket.DefaultDialer.Dial(wsUrl.String(), nil)
+func websocketConnection(wsUrl url.URL, decoder *zstd.Decoder) error {
+	// add compression headers
+	headers := http.Header{}
+	headers.Add("Socket-Encoding", "zstd")
+
+	c, _, err := websocket.DefaultDialer.Dial(wsUrl.String(), headers)
+
 	if err != nil {
 		return fmt.Errorf("dial jetstream: %v", err)
 	}
@@ -175,7 +189,7 @@ func websocketConnection(wsUrl url.URL) error {
 			return err
 		}
 
-		err = readJetstreamMessage(jetstreamMessage, bsky)
+		err = readJetstreamMessage(jetstreamMessage, bsky, decoder)
 		if err != nil {
 			log.Println("error reading jetstream message: ", jetstreamMessage, err)
 			continue
@@ -183,9 +197,17 @@ func websocketConnection(wsUrl url.URL) error {
 	}
 }
 
-func readJetstreamMessage(jetstreamMessage []byte, bsky *bluesky.Client) error {
+func readJetstreamMessage(jetstreamMessageEncoded []byte, bsky *bluesky.Client, decoder *zstd.Decoder) error {
+	// Decompress the message
+	m, err := decoder.DecodeAll(jetstreamMessageEncoded, nil)
+	if err != nil {
+		slog.Error("failed to decompress message", "error", err)
+		return fmt.Errorf("failed to decompress message: %w", err)
+	}
+	jetstreamMessage := m
+
 	var bskyMessage BskyMessage
-	err := json.Unmarshal(jetstreamMessage, &bskyMessage)
+	err = json.Unmarshal(jetstreamMessage, &bskyMessage)
 	if err != nil {
 		return err
 	}
@@ -241,7 +263,7 @@ func sendToSlack(jetstreamMessageStr string, bskyMessage BskyMessage, imageURL s
 			AuthorName: fmt.Sprintf("%s (@%s)", profile.Name, profile.Handle),
 			AuthorIcon: profile.AvatarURL,
 			AuthorLink: fmt.Sprintf("https://bsky.app/profile/%s", profile.Handle),
-			Text:       fmt.Sprintf("%s\n[View post on Bluesky ↗](%s)", bskyMessage.Commit.Record.Text, bskyMessage.toURL(&profile.Handle)),
+			Text:       fmt.Sprintf("%s\n<%s|View post on Bluesky ↗>", bskyMessage.Commit.Record.Text, bskyMessage.toURL(&profile.Handle)),
 			ImageUrl:   imageURL,
 		},
 	}
