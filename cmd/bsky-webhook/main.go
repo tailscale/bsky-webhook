@@ -32,7 +32,7 @@ var (
 	webhookURL = flag.String("slack-webhook-url", envOr("SLACK_WEBHOOK_URL", ""),
 		"slack webhook URL (required)")
 	bskyServerURL = flag.String("bsky-server-url", envOr("BSKY_SERVER_URL",
-		"https://bsky.network"), "bluesky pds server URL (required)")
+		"https://bsky.network"), "bluesky PDS server URL")
 	watchWord = flag.String("watch-word", envOr("WATCH_WORD", "tailscale"),
 		"the word to watch out for. may be multiple words in future (required)")
 )
