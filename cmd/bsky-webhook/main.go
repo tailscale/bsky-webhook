@@ -51,8 +51,11 @@ var jetstreams = []string{
 var zstdDecoder *zstd.Decoder
 
 func init() {
+	// TODO(creachadair): For some reason the blobs reported by jetstream do not
+	// work without an explicit dictionary set, even though that isn't supposed
+	// to be necessary.
 	var err error
-	zstdDecoder, err = zstd.NewReader(nil)
+	zstdDecoder, err = zstd.NewReader(nil, zstd.WithDecoderDicts(nil))
 	if err != nil {
 		log.Panicf("failed to create zstd decoder: %v", err)
 	}
