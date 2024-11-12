@@ -1,3 +1,5 @@
+// Program bsky-webhook receives webhooks from Bluesky and routes mentions of
+// the designated keyword(s) to a Slack channel.
 package main
 
 import (
@@ -12,7 +14,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/signal"
 	"strings"
 	"time"
 
@@ -21,63 +22,75 @@ import (
 	"github.com/klauspost/compress/zstd"
 )
 
-type BskyMessage struct {
-	Did    string      `json:"did"`
-	Commit *BskyCommit `json:"commit"`
-	Kind   string      `json:"kind"`
+var (
+	addr = flag.String("addr", envOr("JETSTREAM_ADDRESS", ""),
+		"jetstream websocket address")
+	bskyHandle = flag.String("bsky-handle", envOr("BSKY_HANDLE", ""),
+		"bluesky handle for auth (required)")
+	bskyAppKey = flag.String("bsky-app-password", envOr("BSKY_APP_PASSWORD", ""),
+		"bluesky app password for auth (required)")
+	webhookURL = flag.String("slack-webhook-url", envOr("SLACK_WEBHOOK_URL", ""),
+		"slack webhook URL (required)")
+	bskyServerURL = flag.String("bsky-server-url", envOr("BSKY_SERVER_URL",
+		"https://bsky.network"), "bluesky pds server URL (required)")
+	watchWord = flag.String("watch-word", envOr("WATCH_WORD", "tailscale"),
+		"the word to watch out for. may be multiple words in future (required)")
+)
+
+// Public addresses of jetstream websocket services.
+// See: https://github.com/bluesky-social/jetstream?tab=readme-ov-file#public-instances
+var jetstreams = []string{
+	"jetstream1.us-east.bsky.network",
+	"jetstream2.us-east.bsky.network",
+	"jetstream1.us-west.bsky.network",
+	"jetstream2.us-west.bsky.network",
 }
 
-func (m *BskyMessage) toURL(handle *string) string {
-	author := handle
-	if author == nil {
-		author = &m.Did
+// zstdDecoder is used as a stateless decoder for Jetstream messages.
+// Only the DecodeAll method may be used.
+var zstdDecoder *zstd.Decoder
+
+func init() {
+	var err error
+	zstdDecoder, err = zstd.NewReader(nil)
+	if err != nil {
+		log.Panicf("failed to create zstd decoder: %v", err)
+	}
+}
+
+func main() {
+	flag.Parse()
+	// TODO(creachadair): Usage text.
+
+	switch {
+	case *webhookURL == "":
+		log.Fatal("missing slack webhook URL (SLACK_WEBHOOK_URL)")
+	case *bskyServerURL == "":
+		log.Fatal("missing Bluesky server URL (BSKY_SERVER_URL)")
+	case *bskyHandle == "":
+		log.Fatal("Missing Bluesky account handle (BSKY_HANDLE)")
+	case *bskyAppKey == "":
+		log.Fatal("missing Bluesky app secret (BSKY_APP_PASSWORD)")
+	case *watchWord == "":
+		log.Fatal("missing watchword")
 	}
 
-	return fmt.Sprintf("https://bsky.app/profile/%s/post/%s", url.PathEscape(*author), url.PathEscape(m.Commit.Rkey))
-}
+	nextAddr := nextWSAddress()
+	for {
+		wsURL := url.URL{
+			Scheme:   "wss",
+			Host:     nextAddr(),
+			Path:     "/subscribe",
+			RawQuery: "wantedCollections=app.bsky.feed.post",
+		}
+		slog.Info("ws connecting", "url", wsURL.String())
 
-type BskyCommit struct {
-	Rev       string      `json:"rev"`
-	Rkey      string      `json:"rkey"`
-	Record    *BskyRecord `json:"record"`
-	Operation string      `json:"operation"`
-}
+		err := websocketConnection(wsURL)
+		slog.Error("ws connection", "url", wsURL, "err", err)
 
-type BskyRecord struct {
-	Text  string    `json:"text"`
-	Embed BskyEmbed `json:"embed"`
-}
-
-type BskyEmbed struct {
-	Images []BskyImage `json:"images"`
-}
-
-type BskyImage struct {
-	Image BskyInnerImage `json:"image"`
-}
-
-type BskyInnerImage struct {
-	Ref BskyImageRef `json:"ref"`
-}
-
-type BskyImageRef struct {
-	Link string `json:"$link"`
-}
-
-type SlackAttachment struct {
-	AuthorName string `json:"author_name"`
-	AuthorIcon string `json:"author_icon"`
-	AuthorLink string `json:"author_link"`
-	Text       string `json:"text"`
-	ImageUrl   string `json:"image_url"`
-	Footer     string `json:"footer"`
-}
-
-type SlackBody struct {
-	Text        string            `json:"text"`
-	UnfurlLinks bool              `json:"unfurl_links"`
-	UnfurlMedia bool              `json:"unfurl_media"`
-	Attachments []SlackAttachment `json:"attachments"`
+		// TODO(erisa): exponential backoff
+		time.Sleep(2 * time.Second)
+	}
 }
 
 func envOr(key, defaultVal string) string {
@@ -87,71 +100,24 @@ func envOr(key, defaultVal string) string {
 	return defaultVal
 }
 
-var addr = flag.String("addr", envOr("JETSTREAM_ADDRESS", ""), "jetstream websocket address")
-var bskyHandle = flag.String("bskyHandle", envOr("BSKY_HANDLE", ""), "bluesky handle for auth")
-var bskyAppKey = flag.String("bskyAppPassword", envOr("BSKY_APP_PASSWORD", ""), "bluesky app password for auth")
-var webhookUrl = flag.String("slackWebhookUrl", envOr("SLACK_WEBHOOK_URL", ""), "slack webhook url")
-var bskyServerUrl = flag.String("bskyServerUrl", envOr("BSKY_SERVER_URL", "https://bsky.network"), "bluesky pds server url")
-var watchWord = flag.String("watchWord", envOr("WATCH_WORD", "tailscale"), "the word to watch out for. may be multiple words in futureee")
-
-// https://github.com/bluesky-social/jetstream?tab=readme-ov-file#public-instances
-var jetstreams = []string{
-	"jetstream1.us-east.bsky.network",
-	"jetstream2.us-east.bsky.network",
-	"jetstream1.us-west.bsky.network",
-	"jetstream2.us-west.bsky.network",
-}
-
-var ZSTDDictionary []byte
-
-func main() {
-	flag.Parse()
-
-	// add zstd decoder
-	decoder, err := zstd.NewReader(nil, zstd.WithDecoderDicts(ZSTDDictionary))
-	if err != nil {
-		log.Fatalf("failed to create zstd decoder: %w", err)
+// nextWSAddress returns a function that, when called, reports the address to
+// which websocket connections should be directed.
+func nextWSAddress() func() string {
+	if *addr != "" {
+		return func() string { return *addr }
 	}
-
-	if *webhookUrl == "" {
-		log.Fatalf("missing slack webhook url in env")
-	}
-
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-	go func() {
-		<-interrupt
-		os.Exit(0)
-	}()
-
-	currentAddr := *addr
-	jetstreamIndex := 0 // start with first jetstream index
-
-	for {
-		if *addr == "" {
-			currentAddr = jetstreams[jetstreamIndex]
+	cur := 0
+	return func() string {
+		out := jetstreams[cur]
+		cur++
+		if cur >= len(jetstreams) {
+			cur = 0
 		}
-
-		wsUrl := url.URL{Scheme: "wss", Host: currentAddr, Path: "/subscribe", RawQuery: "wantedCollections=app.bsky.feed.post"}
-		slog.Info("ws connecting", "url", wsUrl.String())
-
-		err := websocketConnection(wsUrl, decoder)
-		slog.Error("ws connection", "url", wsUrl, "err", err)
-
-		if *addr == "" {
-			// cycle between jetstreams if no override
-			jetstreamIndex++
-			if jetstreamIndex >= len(jetstreams) {
-				jetstreamIndex = 0
-			}
-		}
-
-		// TODO(erisa): exponential backoff
-		time.Sleep(2 * time.Second)
+		return out
 	}
 }
 
-func websocketConnection(wsUrl url.URL, decoder *zstd.Decoder) error {
+func websocketConnection(wsUrl url.URL) error {
 	// add compression headers
 	headers := http.Header{}
 	headers.Add("Socket-Encoding", "zstd")
@@ -169,7 +135,7 @@ func websocketConnection(wsUrl url.URL, decoder *zstd.Decoder) error {
 
 	ctx := context.Background()
 
-	bsky, err := bluesky.Dial(ctx, *bskyServerUrl)
+	bsky, err := bluesky.Dial(ctx, *bskyServerURL)
 	if err != nil {
 		log.Fatal("dial bsky: ", err)
 	}
@@ -189,7 +155,7 @@ func websocketConnection(wsUrl url.URL, decoder *zstd.Decoder) error {
 			return err
 		}
 
-		err = readJetstreamMessage(jetstreamMessage, bsky, decoder)
+		err = readJetstreamMessage(jetstreamMessage, bsky)
 		if err != nil {
 			log.Println("error reading jetstream message: ", jetstreamMessage, err)
 			continue
@@ -197,9 +163,9 @@ func websocketConnection(wsUrl url.URL, decoder *zstd.Decoder) error {
 	}
 }
 
-func readJetstreamMessage(jetstreamMessageEncoded []byte, bsky *bluesky.Client, decoder *zstd.Decoder) error {
+func readJetstreamMessage(jetstreamMessageEncoded []byte, bsky *bluesky.Client) error {
 	// Decompress the message
-	m, err := decoder.DecodeAll(jetstreamMessageEncoded, nil)
+	m, err := zstdDecoder.DecodeAll(jetstreamMessageEncoded, nil)
 	if err != nil {
 		slog.Error("failed to decompress message", "error", err)
 		return fmt.Errorf("failed to decompress message: %w", err)
@@ -278,7 +244,7 @@ func sendToSlack(jetstreamMessageStr string, bskyMessage BskyMessage, imageURL s
 		log.Printf("failed to marshal text: %v", err)
 
 	}
-	res, err := http.Post(*webhookUrl, "application/json", bytes.NewBuffer(body))
+	res, err := http.Post(*webhookURL, "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		slog.Error("failed to post to slack", "msg", jetstreamMessageStr)
 		return err
