@@ -1,5 +1,5 @@
-// Program bsky-webhook receives webhooks from Bluesky and routes mentions of
-// the designated keyword(s) to a Slack channel.
+// Program bsky-webhook receives posts from Bluesky and routes mentions of the
+// designated keyword(s) to a Slack webhook.
 package main
 
 import (
