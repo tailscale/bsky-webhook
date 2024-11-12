@@ -1,18 +1,20 @@
 module github.com/tailscale/bsky-webhook
 
-go 1.22.6
+go 1.23
 
 require (
 	github.com/bluesky-social/jetstream v0.0.0-20241031234625-0ab10bd041fe
 	github.com/gorilla/websocket v1.5.3
 	github.com/karalabe/go-bluesky v0.0.0-20230506152134-dd72fcf127a8
 	github.com/klauspost/compress v1.17.9
+	github.com/tailscale/setec v0.0.0-20241107175935-3954dc4aade5
 )
 
 require (
 	github.com/bluesky-social/indigo v0.0.0-20241008040750-06bacb465af7 // indirect
 	github.com/carlmjohnson/versioninfo v0.22.5 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/go-json-experiment/json v0.0.0-20231102232822-2e55bd4e08b0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
@@ -55,9 +57,13 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
+	go4.org/mem v0.0.0-20220726221520-4f986261bf13 // indirect
 	golang.org/x/crypto v0.28.0 // indirect
+	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8 // indirect
+	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
+	tailscale.com v1.73.0-pre.0.20240822193108-696711cc17c4 // indirect
 )
