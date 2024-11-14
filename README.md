@@ -20,16 +20,18 @@ explicitly marked as optional.
 
 Here's the complete table based on the provided Go code:
 
-| Command-line flag    | Environment variable | Default value                           | Description                                                             |
-|----------------------|----------------------|-----------------------------------------|-------------------------------------------------------------------------|
-| `-addr`              | `JETSTREAM_ADDRESS`  | Rotation of all public jetsream servers | The [jetstream][jetstream] hostname to connect to.                      |
-| `-bsky-handle`       | `BSKY_HANDLE`        | none                                    | The Bluesky handle of the account that will make API requests.          |
-| `-bsky-app-password` | `BSKY_APP_PASSWORD`  | none                                    | The Bluesky app password for authentication.                            |
-| `-slack-webhook-url` | `SLACK_WEBHOOK_URL`  | none                                    | The Slack webhook URL for sending notifications.                        |
-| `-bsky-server-url`   | `BSKY_SERVER_URL`    | "https://bsky.social"                   | The Bluesky PDS server to send API requests to URL.                     |
-| `-watch-word`        | `WATCH_WORD`         | "tailscale"                             | The word to watch out for; may support multiple words in the future.    |
-| `-secrets-url`       | `SECRETS_URL`        | none                                    | The address of a [setec][setec] server to fetch secrets from (optional) |
-| `-secrets-prefix`    | `SECRETS_PREFIX`     | ""                                      | A prefix to prepend to secret names fetched from setec (optional)       |
+| Command-line flag    | Environment variable | Default value                           | Description                                                                 |
+|----------------------|----------------------|-----------------------------------------|-----------------------------------------------------------------------------|
+| `-addr`              | `JETSTREAM_ADDRESS`  | Rotation of all public jetsream servers | The [jetstream][jetstream] hostname to connect to.                          |
+| `-bsky-handle`       | `BSKY_HANDLE`        | none                                    | The Bluesky handle of the account that will make API requests.              |
+| `-bsky-app-password` | `BSKY_APP_PASSWORD`  | none                                    | The Bluesky app password for authentication.                                |
+| `-slack-webhook-url` | `SLACK_WEBHOOK_URL`  | none                                    | The Slack webhook URL for sending notifications.                            |
+| `-bsky-server-url`   | `BSKY_SERVER_URL`    | "https://bsky.social"                   | The Bluesky PDS server to send API requests to URL.                         |
+| `-watch-word`        | `WATCH_WORD`         | "tailscale"                             | The word to watch out for; may support multiple words in the future.        |
+| `-secrets-url`       | `SECRETS_URL`        | none                                    | The address of a [setec][setec] server to fetch secrets from (optional)     |
+| `-secrets-prefix`    | `SECRETS_PREFIX`     | ""                                      | A prefix to prepend to secret names fetched from setec (optional)           |
+| `-ts-hotname`        | `TS_HOSTNAME`        | ""                                      | A Tailscale hostname where the server should run (optional)                 |
+| `-ts-state-dir`      | `TS_STATE_DIR`       | none                                    | Where Tailscale state should be stored, if `-ts-hostname` is set (optional) |
 
 [jetstream]: https://github.com/bluesky-social/jetstream
 [setec]: https://github.com/tailscale/setec
