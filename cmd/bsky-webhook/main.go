@@ -14,13 +14,17 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
+	"path"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/bluesky-social/jetstream/pkg/models"
 	"github.com/gorilla/websocket"
-	"github.com/karalabe/go-bluesky"
+	bluesky "github.com/karalabe/go-bluesky"
 	"github.com/klauspost/compress/zstd"
+	"github.com/tailscale/setec/client/setec"
 )
 
 var (
@@ -33,9 +37,14 @@ var (
 	webhookURL = flag.String("slack-webhook-url", envOr("SLACK_WEBHOOK_URL", ""),
 		"slack webhook URL (required)")
 	bskyServerURL = flag.String("bsky-server-url", envOr("BSKY_SERVER_URL",
-		"https://bsky.network"), "bluesky PDS server URL")
+		"https://bsky.social"), "bluesky PDS server URL")
 	watchWord = flag.String("watch-word", envOr("WATCH_WORD", "tailscale"),
 		"the word to watch out for. may be multiple words in future (required)")
+
+	secretsURL = flag.String("secrets-url", envOr("SECRETS_URL", ""),
+		"the URL of a secrets server (if empty, no server is used)")
+	secretsPrefix = flag.String("secrets-prefix", envOr("SECRETS_PREFIX", ""),
+		"the prefix to prepend to secret names fetched from --secrets-url")
 )
 
 // Public addresses of jetstream websocket services.
@@ -51,6 +60,10 @@ var jetstreams = []string{
 // Only the DecodeAll method may be used.
 var zstdDecoder *zstd.Decoder
 
+// httpClient must be used for all HTTP requests. It is a variable so that it
+// can be replaced with a proxy.
+var httpClient = http.DefaultClient
+
 func init() {
 	// Jetstream uses a custom zstd dictionary, so make sure we do the same.
 	var err error
@@ -65,20 +78,38 @@ func main() {
 	// TODO(creachadair): Usage text.
 
 	switch {
-	case *webhookURL == "":
+	case *webhookURL == "" && *secretsURL == "":
 		log.Fatal("missing slack webhook URL (SLACK_WEBHOOK_URL)")
 	case *bskyServerURL == "":
 		log.Fatal("missing Bluesky server URL (BSKY_SERVER_URL)")
 	case *bskyHandle == "":
 		log.Fatal("Missing Bluesky account handle (BSKY_HANDLE)")
-	case *bskyAppKey == "":
+	case *bskyAppKey == "" && *secretsURL == "":
 		log.Fatal("missing Bluesky app secret (BSKY_APP_PASSWORD)")
 	case *watchWord == "":
 		log.Fatal("missing watchword")
 	}
 
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	if *secretsURL != "" {
+		webhookSecret := path.Join(*secretsPrefix, "slack-webhook-url")
+		appKeySecret := path.Join(*secretsPrefix, "bluesky-app-key")
+		st, err := setec.NewStore(ctx, setec.StoreConfig{
+			Client:  setec.Client{Server: *secretsURL, DoHTTP: httpClient.Do},
+			Secrets: []string{webhookSecret, appKeySecret},
+		})
+		if err != nil {
+			log.Fatalf("initialize secrets store: %v", err)
+		}
+		*webhookURL = st.Secret(webhookSecret).GetString()
+		*bskyAppKey = st.Secret(appKeySecret).GetString()
+		log.Printf("Fetched client secrets from %q", *secretsURL)
+	}
+
 	nextAddr := nextWSAddress()
-	for {
+	for ctx.Err() == nil {
 		wsURL := url.URL{
 			Scheme:   "wss",
 			Host:     nextAddr(),
@@ -87,7 +118,7 @@ func main() {
 		}
 		slog.Info("ws connecting", "url", wsURL.String())
 
-		err := websocketConnection(wsURL)
+		err := websocketConnection(ctx, wsURL)
 		slog.Error("ws connection", "url", wsURL, "err", err)
 
 		// TODO(erisa): exponential backoff
@@ -119,13 +150,12 @@ func nextWSAddress() func() string {
 	}
 }
 
-func websocketConnection(wsUrl url.URL) error {
+func websocketConnection(ctx context.Context, wsUrl url.URL) error {
 	// add compression headers
 	headers := http.Header{}
 	headers.Add("Socket-Encoding", "zstd")
 
 	c, _, err := websocket.DefaultDialer.Dial(wsUrl.String(), headers)
-
 	if err != nil {
 		return fmt.Errorf("dial jetstream: %v", err)
 	}
@@ -135,9 +165,7 @@ func websocketConnection(wsUrl url.URL) error {
 		return nil
 	})
 
-	ctx := context.Background()
-
-	bsky, err := bluesky.Dial(ctx, *bskyServerURL)
+	bsky, err := bluesky.DialWithClient(ctx, *bskyServerURL, httpClient)
 	if err != nil {
 		log.Fatal("dial bsky: ", err)
 	}
@@ -148,7 +176,7 @@ func websocketConnection(wsUrl url.URL) error {
 		log.Fatal("login bsky: ", err)
 	}
 
-	for {
+	for ctx.Err() == nil {
 		// bail if we take too long for a read
 		c.SetReadDeadline(time.Now().Add(time.Second * 5))
 
@@ -157,15 +185,16 @@ func websocketConnection(wsUrl url.URL) error {
 			return err
 		}
 
-		err = readJetstreamMessage(jetstreamMessage, bsky)
+		err = readJetstreamMessage(ctx, jetstreamMessage, bsky)
 		if err != nil {
 			log.Println("error reading jetstream message: ", jetstreamMessage, err)
 			continue
 		}
 	}
+	return ctx.Err()
 }
 
-func readJetstreamMessage(jetstreamMessageEncoded []byte, bsky *bluesky.Client) error {
+func readJetstreamMessage(ctx context.Context, jetstreamMessageEncoded []byte, bsky *bluesky.Client) error {
 	// Decompress the message
 	m, err := zstdDecoder.DecodeAll(jetstreamMessageEncoded, nil)
 	if err != nil {
@@ -189,7 +218,7 @@ func readJetstreamMessage(jetstreamMessageEncoded []byte, bsky *bluesky.Client) 
 		jetstreamMessageStr := string(jetstreamMessage)
 
 		go func() {
-			profile, err := getBskyProfile(bskyMessage, bsky)
+			profile, err := getBskyProfile(ctx, bskyMessage, bsky)
 			if err != nil {
 				slog.Error("fetch profile", "err", err, "msg", jetstreamMessageStr)
 				return
@@ -201,7 +230,7 @@ func readJetstreamMessage(jetstreamMessageEncoded []byte, bsky *bluesky.Client) 
 				imageURL = fmt.Sprintf("https://cdn.bsky.app/img/feed_fullsize/plain/%s/%s", bskyMessage.Did, bskyMessage.Commit.Record.Embed.Images[0].Image.Ref.Link)
 			}
 
-			err = sendToSlack(jetstreamMessageStr, bskyMessage, imageURL, *profile)
+			err = sendToSlack(ctx, jetstreamMessageStr, bskyMessage, imageURL, *profile)
 			if err != nil {
 				slog.Error("slack error", "err", err)
 			}
@@ -211,8 +240,8 @@ func readJetstreamMessage(jetstreamMessageEncoded []byte, bsky *bluesky.Client) 
 	return nil
 }
 
-func getBskyProfile(bskyMessage BskyMessage, bsky *bluesky.Client) (*bluesky.Profile, error) {
-	profile, err := bsky.FetchProfile(context.Background(), bskyMessage.Did)
+func getBskyProfile(ctx context.Context, bskyMessage BskyMessage, bsky *bluesky.Client) (*bluesky.Profile, error) {
+	profile, err := bsky.FetchProfile(ctx, bskyMessage.Did)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +254,7 @@ func getBskyProfile(bskyMessage BskyMessage, bsky *bluesky.Client) (*bluesky.Pro
 	return profile, nil
 }
 
-func sendToSlack(jetstreamMessageStr string, bskyMessage BskyMessage, imageURL string, profile bluesky.Profile) error {
+func sendToSlack(ctx context.Context, jetstreamMessageStr string, bskyMessage BskyMessage, imageURL string, profile bluesky.Profile) error {
 	attachments := []SlackAttachment{
 		{
 			AuthorName: fmt.Sprintf("%s (@%s)", profile.Name, profile.Handle),
@@ -246,11 +275,17 @@ func sendToSlack(jetstreamMessageStr string, bskyMessage BskyMessage, imageURL s
 		log.Printf("failed to marshal text: %v", err)
 
 	}
-	res, err := http.Post(*webhookURL, "application/json", bytes.NewBuffer(body))
+	req, err := http.NewRequestWithContext(ctx, "POST", *webhookURL, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	res, err := httpClient.Do(req)
 	if err != nil {
 		slog.Error("failed to post to slack", "msg", jetstreamMessageStr)
 		return err
 	}
+	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
 		body, err := io.ReadAll(res.Body)
@@ -258,8 +293,6 @@ func sendToSlack(jetstreamMessageStr string, bskyMessage BskyMessage, imageURL s
 			slog.Error("bad error code from slack and fail to read body", "statusCode", res.StatusCode, "msg", jetstreamMessageStr)
 			return err
 		}
-		defer res.Body.Close()
-
 		slog.Error("error code response from slack", "statusCode", res.StatusCode, "responseBody", string(body), "msg", jetstreamMessageStr)
 		return fmt.Errorf("slack: %s %s", res.Status, string(body))
 	}
