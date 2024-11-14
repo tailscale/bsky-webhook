@@ -15,7 +15,7 @@ go run ./cmd/bsky-webhook/ -bskyHandle me.example.com -watchWord "pangolin"
 ## Configuration
 
 These configuration options are available as command-line flags and
-environment variables. All of them are optional.
+environment variables. Those without defaults are required.
 
 Here's the complete table based on the provided Go code:
 
