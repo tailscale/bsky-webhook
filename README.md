@@ -9,7 +9,7 @@ Sends Slack webhook alerts for Bluesky messages using [Jetstream](https://github
 ```bash
 export BSKY_APP_PASSWORD=asdf-asdf-asdf
 export SLACK_WEBHOOK_URL=https://tailscale.slack.com/...
-go run ./cmd/bsky-webhook/ -bskyHandle me.example.com -watchWord "pangolin"
+go run ./cmd/bsky-webhook/ -bsky-handle me.example.com -watch-word "pangolin"
 ```
 
 ## Configuration
