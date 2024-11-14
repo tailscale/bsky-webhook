@@ -25,6 +25,7 @@ import (
 	bluesky "github.com/karalabe/go-bluesky"
 	"github.com/klauspost/compress/zstd"
 	"github.com/tailscale/setec/client/setec"
+	"tailscale.com/tsnet"
 )
 
 var (
@@ -45,6 +46,10 @@ var (
 		"the URL of a secrets server (if empty, no server is used)")
 	secretsPrefix = flag.String("secrets-prefix", envOr("SECRETS_PREFIX", ""),
 		"the prefix to prepend to secret names fetched from --secrets-url")
+	tsHostname = flag.String("ts-hostname", envOr("TS_HOSTNAME", ""),
+		"the Tailscale hostname the server should advertise (if empty, runs locally)")
+	tsStateDir = flag.String("ts-state-dir", envOr("TS_STATE_DIR", ""),
+		"the Tailscale state directory path (optional)")
 )
 
 // Public addresses of jetstream websocket services.
@@ -92,6 +97,21 @@ func main() {
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
+
+	if *tsHostname != "" {
+		ts := &tsnet.Server{
+			Hostname: *tsHostname,
+			Dir:      *tsStateDir,
+		}
+		if _, err := ts.Up(ctx); err != nil {
+			log.Fatalf("starting tsnet for %q: %v", *tsHostname, err)
+		}
+
+		// Ensure HTTP and TCP connections go via Tailscale so ACLs work.
+		httpClient = ts.HTTPClient()
+		websocket.DefaultDialer.NetDialContext = ts.Dial
+		log.Printf("running in tsnet as %q", *tsHostname)
+	}
 
 	if *secretsURL != "" {
 		webhookSecret := path.Join(*secretsPrefix, "slack-webhook-url")
