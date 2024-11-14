@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bluesky-social/jetstream/pkg/models"
 	"github.com/gorilla/websocket"
 	"github.com/karalabe/go-bluesky"
 	"github.com/klauspost/compress/zstd"
@@ -51,11 +52,9 @@ var jetstreams = []string{
 var zstdDecoder *zstd.Decoder
 
 func init() {
-	// TODO(creachadair): For some reason the blobs reported by jetstream do not
-	// work without an explicit dictionary set, even though that isn't supposed
-	// to be necessary.
+	// Jetstream uses a custom zstd dictionary, so make sure we do the same.
 	var err error
-	zstdDecoder, err = zstd.NewReader(nil, zstd.WithDecoderDicts(nil))
+	zstdDecoder, err = zstd.NewReader(nil, zstd.WithDecoderDicts(models.ZSTDDictionary))
 	if err != nil {
 		log.Panicf("failed to create zstd decoder: %v", err)
 	}
