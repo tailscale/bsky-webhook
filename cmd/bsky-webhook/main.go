@@ -187,13 +187,13 @@ func websocketConnection(ctx context.Context, wsUrl url.URL) error {
 
 	bsky, err := bluesky.DialWithClient(ctx, *bskyServerURL, httpClient)
 	if err != nil {
-		log.Fatal("dial bsky: ", err)
+		return fmt.Errorf("dial bsky: %w", err)
 	}
 	defer bsky.Close()
 
 	err = bsky.Login(ctx, *bskyHandle, *bskyAppKey)
 	if err != nil {
-		log.Fatal("login bsky: ", err)
+		return fmt.Errorf("login bsky: %w", err)
 	}
 
 	for ctx.Err() == nil {
