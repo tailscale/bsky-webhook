@@ -20,10 +20,10 @@ import (
 	"syscall"
 	"time"
 
-	bluesky "github.com/Erisa/go-bluesky"
 	"github.com/bluesky-social/jetstream/pkg/models"
 	"github.com/gorilla/websocket"
 	"github.com/klauspost/compress/zstd"
+	bluesky "github.com/tailscale/go-bluesky"
 	"github.com/tailscale/setec/client/setec"
 	"tailscale.com/tsnet"
 )

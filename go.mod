@@ -5,10 +5,10 @@ go 1.23.1
 toolchain go1.23.3
 
 require (
-	github.com/Erisa/go-bluesky v0.0.0-20241115111844-a6c671bab6ca
 	github.com/bluesky-social/jetstream v0.0.0-20241031234625-0ab10bd041fe
 	github.com/gorilla/websocket v1.5.3
 	github.com/klauspost/compress v1.17.9
+	github.com/tailscale/go-bluesky v0.0.0-20241115170709-693553a07285
 	github.com/tailscale/setec v0.0.0-20241107175935-3954dc4aade5
 	tailscale.com v1.73.0-pre.0.20240822193108-696711cc17c4
 )
