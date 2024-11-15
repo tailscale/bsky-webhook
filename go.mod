@@ -1,11 +1,13 @@
 module github.com/tailscale/bsky-webhook
 
-go 1.23
+go 1.23.1
+
+toolchain go1.23.3
 
 require (
+	github.com/Erisa/go-bluesky v0.0.0-20241115111844-a6c671bab6ca
 	github.com/bluesky-social/jetstream v0.0.0-20241031234625-0ab10bd041fe
 	github.com/gorilla/websocket v1.5.3
-	github.com/karalabe/go-bluesky v0.0.0-20230506152134-dd72fcf127a8
 	github.com/klauspost/compress v1.17.9
 	github.com/tailscale/setec v0.0.0-20241107175935-3954dc4aade5
 	tailscale.com v1.73.0-pre.0.20240822193108-696711cc17c4
@@ -31,11 +33,14 @@ require (
 	github.com/aws/smithy-go v1.20.2 // indirect
 	github.com/bits-and-blooms/bitset v1.13.0 // indirect
 	github.com/bluesky-social/indigo v0.0.0-20241008040750-06bacb465af7 // indirect
+	github.com/btcsuite/btcd v0.0.0-20190824003749-130ea5bddde3 // indirect
 	github.com/carlmjohnson/versioninfo v0.22.5 // indirect
 	github.com/coder/websocket v1.8.12 // indirect
 	github.com/coreos/go-iptables v0.7.1-0.20240112124308-65c67c9f46e6 // indirect
 	github.com/dblohm7/wingoes v0.0.0-20240119213807-a09d6be7affa // indirect
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/digitalocean/go-smbios v0.0.0-20180907143718-390a4f403a8e // indirect
+	github.com/ethereum/go-ethereum v1.9.3 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fxamacker/cbor/v2 v2.6.0 // indirect
 	github.com/gaissmai/bart v0.11.1 // indirect
@@ -109,6 +114,7 @@ require (
 	github.com/tailscale/wireguard-go v0.0.0-20240731203015-71393c576b98 // indirect
 	github.com/tcnksm/go-httpstat v0.2.0 // indirect
 	github.com/u-root/uio v0.0.0-20240118234441-a3c409a6018e // indirect
+	github.com/ureeves/jwt-go-secp256k1 v0.2.0 // indirect
 	github.com/vishvananda/netlink v1.2.1-beta.2 // indirect
 	github.com/vishvananda/netns v0.0.4 // indirect
 	github.com/whyrusleeping/cbor-gen v0.2.0 // indirect
