@@ -234,7 +234,7 @@ func readJetstreamMessage(ctx context.Context, jetstreamMessageEncoded []byte, b
 		return nil
 	}
 
-	if strings.Contains(bskyMessage.Commit.Record.Text, *watchWord) {
+	if strings.Contains(strings.ToLower(bskyMessage.Commit.Record.Text), strings.ToLower(*watchWord)) {
 		jetstreamMessageStr := string(jetstreamMessage)
 
 		go func() {
