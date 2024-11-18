@@ -207,7 +207,8 @@ func websocketConnection(ctx context.Context, wsUrl url.URL) error {
 
 		err = readJetstreamMessage(ctx, jetstreamMessage, bsky)
 		if err != nil {
-			log.Println("error reading jetstream message: ", jetstreamMessage, err)
+			msg := jetstreamMessage[:min(32, len(jetstreamMessage))]
+			log.Printf("error reading jetstream message %q: %v", msg, err)
 			continue
 		}
 	}
