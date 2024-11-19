@@ -231,7 +231,7 @@ func readJetstreamMessage(ctx context.Context, jetstreamMessageEncoded []byte, b
 	}
 
 	// we can ignore these messages
-	if bskyMessage.Kind != "commit" || bskyMessage.Commit == nil || bskyMessage.Commit.Operation != "create" || bskyMessage.Commit.Record == nil || bskyMessage.Commit.Rkey == "" {
+	if bskyMessage.Time < (time.Now().UnixMicro()-86400000000) || bskyMessage.Kind != "commit" || bskyMessage.Commit == nil || bskyMessage.Commit.Operation != "create" || bskyMessage.Commit.Record == nil || bskyMessage.Commit.Rkey == "" {
 		return nil
 	}
 

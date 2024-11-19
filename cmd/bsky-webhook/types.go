@@ -9,6 +9,7 @@ type BskyMessage struct {
 	Did    string      `json:"did"`
 	Commit *BskyCommit `json:"commit"`
 	Kind   string      `json:"kind"`
+	Time   int64       `json:"time_us"`
 }
 
 func (m *BskyMessage) toURL(handle *string) string {
