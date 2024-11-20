@@ -231,7 +231,18 @@ func readJetstreamMessage(ctx context.Context, jetstreamMessageEncoded []byte, b
 	}
 
 	// we can ignore these messages
-	if bskyMessage.Time < (time.Now().UnixMicro()-86400000000) || bskyMessage.Kind != "commit" || bskyMessage.Commit == nil || bskyMessage.Commit.Operation != "create" || bskyMessage.Commit.Record == nil || bskyMessage.Commit.Rkey == "" {
+	if bskyMessage.Kind != "commit" || bskyMessage.Commit == nil || bskyMessage.Commit.Operation != "create" || bskyMessage.Commit.Record == nil || bskyMessage.Commit.Rkey == "" {
+		return nil
+	}
+
+	// parse timestamp user provided when posting
+	postTime, err := time.Parse(time.RFC3339, bskyMessage.Commit.Record.CreatedAtString)
+	if err != nil {
+		return err
+	}
+
+	// if too old, ignore
+	if time.Since(postTime) > time.Hour*24 {
 		return nil
 	}
 

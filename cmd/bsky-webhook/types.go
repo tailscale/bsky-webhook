@@ -29,8 +29,9 @@ type BskyCommit struct {
 }
 
 type BskyRecord struct {
-	Text  string    `json:"text"`
-	Embed BskyEmbed `json:"embed"`
+	Text            string    `json:"text"`
+	Embed           BskyEmbed `json:"embed"`
+	CreatedAtString string    `json:"createdAt"`
 }
 
 type BskyEmbed struct {
