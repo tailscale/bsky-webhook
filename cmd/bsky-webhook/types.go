@@ -57,6 +57,7 @@ type SlackAttachment struct {
 	Text       string `json:"text"`
 	ImageUrl   string `json:"image_url"`
 	Footer     string `json:"footer"`
+	Ts         string `json:"ts"`
 }
 
 type SlackBody struct {

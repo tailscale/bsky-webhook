@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -262,7 +263,7 @@ func readJetstreamMessage(ctx context.Context, jetstreamMessageEncoded []byte, b
 				imageURL = fmt.Sprintf("https://cdn.bsky.app/img/feed_fullsize/plain/%s/%s", bskyMessage.Did, bskyMessage.Commit.Record.Embed.Images[0].Image.Ref.Link)
 			}
 
-			err = sendToSlack(ctx, jetstreamMessageStr, bskyMessage, imageURL, *profile)
+			err = sendToSlack(ctx, jetstreamMessageStr, bskyMessage, imageURL, *profile, postTime)
 			if err != nil {
 				slog.Error("slack error", "err", err)
 			}
@@ -286,7 +287,7 @@ func getBskyProfile(ctx context.Context, bskyMessage BskyMessage, bsky *bluesky.
 	return profile, nil
 }
 
-func sendToSlack(ctx context.Context, jetstreamMessageStr string, bskyMessage BskyMessage, imageURL string, profile bluesky.Profile) error {
+func sendToSlack(ctx context.Context, jetstreamMessageStr string, bskyMessage BskyMessage, imageURL string, profile bluesky.Profile, postTime time.Time) error {
 	attachments := []SlackAttachment{
 		{
 			AuthorName: fmt.Sprintf("%s (@%s)", profile.Name, profile.Handle),
@@ -294,6 +295,8 @@ func sendToSlack(ctx context.Context, jetstreamMessageStr string, bskyMessage Bs
 			AuthorLink: fmt.Sprintf("https://bsky.app/profile/%s", profile.Handle),
 			Text:       fmt.Sprintf("%s\n<%s|View post on Bluesky ↗>", bskyMessage.Commit.Record.Text, bskyMessage.toURL(&profile.Handle)),
 			ImageUrl:   imageURL,
+			Footer:     "Posted",
+			Ts:         strconv.FormatInt(postTime.Unix(), 10),
 		},
 	}
 
