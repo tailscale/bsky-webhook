@@ -8,7 +8,7 @@ require (
 	github.com/bluesky-social/jetstream v0.0.0-20241031234625-0ab10bd041fe
 	github.com/gorilla/websocket v1.5.3
 	github.com/klauspost/compress v1.17.9
-	github.com/tailscale/go-bluesky v0.0.0-20241119194810-24832be6bead
+	github.com/tailscale/go-bluesky v0.0.0-20241120102717-59cb59520339
 	github.com/tailscale/setec v0.0.0-20241107175935-3954dc4aade5
 	tailscale.com v1.73.0-pre.0.20240822193108-696711cc17c4
 )
@@ -32,7 +32,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.28.6 // indirect
 	github.com/aws/smithy-go v1.20.2 // indirect
 	github.com/bits-and-blooms/bitset v1.13.0 // indirect
-	github.com/bluesky-social/indigo v0.0.0-20241119181532-966c093275b7 // indirect
+	github.com/bluesky-social/indigo v0.0.0-20241119234843-9198b7903723 // indirect
 	github.com/carlmjohnson/versioninfo v0.22.5 // indirect
 	github.com/coder/websocket v1.8.12 // indirect
 	github.com/coreos/go-iptables v0.7.1-0.20240112124308-65c67c9f46e6 // indirect
