@@ -29,9 +29,10 @@ type BskyCommit struct {
 }
 
 type BskyRecord struct {
-	Text            string    `json:"text"`
-	Embed           BskyEmbed `json:"embed"`
-	CreatedAtString string    `json:"createdAt"`
+	Text            string      `json:"text"`
+	Embed           BskyEmbed   `json:"embed"`
+	CreatedAtString string      `json:"createdAt"`
+	Facets          []BskyFacet `json:"facets"`
 }
 
 type BskyEmbed struct {
@@ -48,6 +49,28 @@ type BskyInnerImage struct {
 
 type BskyImageRef struct {
 	Link string `json:"$link"`
+}
+
+type BskyFacet struct {
+	Features []BskyFacetFeatures `json:"features"`
+	Index    BskyFacetIndex      `json:"index"`
+}
+
+type BskyFacetFeatures struct {
+	Type string `json:"$type"`
+	Uri  string `json:"uri"`
+	Did  string `json:"did"`
+	Tag  string `json:"tag"`
+}
+
+type BskyFacetIndex struct {
+	ByteEnd   int `json:"byteEnd"`
+	ByteStart int `json:"byteStart"`
+}
+
+type BskyTextFragment struct {
+	Text     string
+	Features []BskyFacetFeatures
 }
 
 type SlackAttachment struct {

@@ -288,12 +288,24 @@ func getBskyProfile(ctx context.Context, bskyMessage BskyMessage, bsky *bluesky.
 }
 
 func sendToSlack(ctx context.Context, jetstreamMessageStr string, bskyMessage BskyMessage, imageURL string, profile bluesky.Profile, postTime time.Time) error {
+	var messageText string
+	var err error
+
+	if len(bskyMessage.Commit.Record.Facets) != 0 {
+		messageText, err = bskyMessageToSlackMarkup(bskyMessage)
+		if err != nil {
+			return err
+		}
+	} else {
+		messageText = bskyMessage.Commit.Record.Text
+	}
+
 	attachments := []SlackAttachment{
 		{
 			AuthorName: fmt.Sprintf("%s (@%s)", profile.Name, profile.Handle),
 			AuthorIcon: profile.AvatarURL,
 			AuthorLink: fmt.Sprintf("https://bsky.app/profile/%s", profile.Handle),
-			Text:       fmt.Sprintf("%s\n<%s|View post on Bluesky ↗>", bskyMessage.Commit.Record.Text, bskyMessage.toURL(&profile.Handle)),
+			Text:       fmt.Sprintf("%s\n<%s|View post on Bluesky ↗>", messageText, bskyMessage.toURL(&profile.Handle)),
 			ImageUrl:   imageURL,
 			Footer:     "Posted",
 			Ts:         strconv.FormatInt(postTime.Unix(), 10),
