@@ -30,7 +30,7 @@ Here's the complete table based on the provided Go code:
 | `-watch-word`        | `WATCH_WORD`         | "tailscale"                             | The word to watch out for; may support multiple words in the future.        |
 | `-secrets-url`       | `SECRETS_URL`        | none                                    | The address of a [setec][setec] server to fetch secrets from (optional)     |
 | `-secrets-prefix`    | `SECRETS_PREFIX`     | ""                                      | A prefix to prepend to secret names fetched from setec (optional)           |
-| `-ts-hotname`        | `TS_HOSTNAME`        | ""                                      | A Tailscale hostname where the server should run (optional)                 |
+| `-ts-hostname`       | `TS_HOSTNAME`        | ""                                      | A Tailscale hostname where the server should run (optional)                 |
 | `-ts-state-dir`      | `TS_STATE_DIR`       | none                                    | Where Tailscale state should be stored, if `-ts-hostname` is set (optional) |
 
 [jetstream]: https://github.com/bluesky-social/jetstream
