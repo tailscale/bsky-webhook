@@ -6,7 +6,7 @@ import (
 )
 
 type BskyMessage struct {
-	Did    string      `json:"did"`
+	DID    string      `json:"did"`
 	Commit *BskyCommit `json:"commit"`
 	Kind   string      `json:"kind"`
 	Time   int64       `json:"time_us"`
@@ -15,7 +15,7 @@ type BskyMessage struct {
 func (m *BskyMessage) toURL(handle *string) string {
 	author := handle
 	if author == nil {
-		author = &m.Did
+		author = &m.DID
 	}
 
 	return fmt.Sprintf("https://bsky.app/profile/%s/post/%s", url.PathEscape(*author), url.PathEscape(m.Commit.Rkey))
@@ -29,10 +29,10 @@ type BskyCommit struct {
 }
 
 type BskyRecord struct {
-	Text            string      `json:"text"`
-	Embed           BskyEmbed   `json:"embed"`
-	CreatedAtString string      `json:"createdAt"`
-	Facets          []BskyFacet `json:"facets"`
+	Text      string      `json:"text"`
+	Embed     BskyEmbed   `json:"embed"`
+	CreatedAt string      `json:"createdAt"` // RFC3339 timestamp
+	Facets    []BskyFacet `json:"facets"`
 }
 
 type BskyEmbed struct {
@@ -58,8 +58,8 @@ type BskyFacet struct {
 
 type BskyFacetFeatures struct {
 	Type string `json:"$type"`
-	Uri  string `json:"uri"`
-	Did  string `json:"did"`
+	URI  string `json:"uri"`
+	DID  string `json:"did"`
 	Tag  string `json:"tag"`
 }
 

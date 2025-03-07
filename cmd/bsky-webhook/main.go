@@ -237,7 +237,7 @@ func readJetstreamMessage(ctx context.Context, jetstreamMessageEncoded []byte, b
 	}
 
 	// parse timestamp user provided when posting
-	postTime, err := time.Parse(time.RFC3339, bskyMessage.Commit.Record.CreatedAtString)
+	postTime, err := time.Parse(time.RFC3339, bskyMessage.Commit.Record.CreatedAt)
 	if err != nil {
 		return err
 	}
@@ -260,7 +260,7 @@ func readJetstreamMessage(ctx context.Context, jetstreamMessageEncoded []byte, b
 			var imageURL string
 
 			if len(bskyMessage.Commit.Record.Embed.Images) != 0 {
-				imageURL = fmt.Sprintf("https://cdn.bsky.app/img/feed_fullsize/plain/%s/%s", bskyMessage.Did, bskyMessage.Commit.Record.Embed.Images[0].Image.Ref.Link)
+				imageURL = fmt.Sprintf("https://cdn.bsky.app/img/feed_fullsize/plain/%s/%s", bskyMessage.DID, bskyMessage.Commit.Record.Embed.Images[0].Image.Ref.Link)
 			}
 
 			err = sendToSlack(ctx, jetstreamMessageStr, bskyMessage, imageURL, *profile, postTime)
@@ -274,7 +274,7 @@ func readJetstreamMessage(ctx context.Context, jetstreamMessageEncoded []byte, b
 }
 
 func getBskyProfile(ctx context.Context, bskyMessage BskyMessage, bsky *bluesky.Client) (*bluesky.Profile, error) {
-	profile, err := bsky.FetchProfile(ctx, bskyMessage.Did)
+	profile, err := bsky.FetchProfile(ctx, bskyMessage.DID)
 	if err != nil {
 		return nil, err
 	}
@@ -291,13 +291,9 @@ func sendToSlack(ctx context.Context, jetstreamMessageStr string, bskyMessage Bs
 	var messageText string
 	var err error
 
-	if len(bskyMessage.Commit.Record.Facets) != 0 {
-		messageText, err = bskyMessageToSlackMarkup(bskyMessage)
-		if err != nil {
-			return err
-		}
-	} else {
-		messageText = bskyMessage.Commit.Record.Text
+	messageText, err = bskyMessageToSlackMarkup(bskyMessage)
+	if err != nil {
+		return err
 	}
 
 	attachments := []SlackAttachment{

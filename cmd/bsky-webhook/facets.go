@@ -1,44 +1,42 @@
 package main
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 	"strings"
 )
 
-func bskyMessageToSlackMarkup(bskyMessage BskyMessage) (string, error) {
-	var slackStringBuilder strings.Builder
+func (b BskyTextFragment) featureURI() string {
+	for _, feat := range b.Features {
+		switch feat.URI {
+		case "app.bsky.richtext.facet#link":
+			return feat.URI
+		case "app.bsky.richtext.facet#mention":
+			return fmt.Sprintf("https://bsky.app/profile/%s", feat.DID)
+		case "app.bsky.richtext.facet#tag":
+			return fmt.Sprintf("https://bsky.app/hashtag/%s", feat.Tag)
+		}
+	}
+	return ""
+}
 
-	fragments, err := facetsToFragments(bskyMessage)
+func bskyMessageToSlackMarkup(msg BskyMessage) (string, error) {
+	var sb strings.Builder
+
+	fragments, err := facetsToFragments(msg)
 	if err != nil {
 		return "", err
 	}
 
-	for _, fragment := range fragments {
-		if fragment.Features == nil {
-			slackStringBuilder.WriteString(fragment.Text)
+	for _, frag := range fragments {
+		if uri := frag.featureURI(); uri != "" {
+			fmt.Fprintf(&sb, "<%s|%s>", uri, frag.Text)
 		} else {
-			uri := ""
-			for _, feature := range fragment.Features {
-				if feature.Type == "app.bsky.richtext.facet#link" {
-					uri = feature.Uri
-					break
-				} else if feature.Type == "app.bsky.richtext.facet#mention" {
-					uri = fmt.Sprintf("https://bsky.app/profile/%s", feature.Did)
-					break
-				} else if feature.Type == "app.bsky.richtext.facet#tag" {
-					uri = fmt.Sprintf("https://bsky.app/hashtag/%s", feature.Tag)
-				}
-			}
-			if uri != "" {
-				slackStringBuilder.WriteString(fmt.Sprintf("<%s|%s>", uri, fragment.Text))
-			} else {
-				slackStringBuilder.WriteString(fragment.Text)
-			}
+			sb.WriteString(frag.Text)
 		}
 	}
-
-	return slackStringBuilder.String(), nil
+	return sb.String(), nil
 }
 
 func facetsToFragments(bskyMessage BskyMessage) ([]BskyTextFragment, error) {
@@ -47,8 +45,9 @@ func facetsToFragments(bskyMessage BskyMessage) ([]BskyTextFragment, error) {
 
 	fragments := []BskyTextFragment{}
 
+	// We use SortStable here as we want the original order of equal elements to stay the same.
 	slices.SortStableFunc(facets, func(a, b BskyFacet) int {
-		return a.Index.ByteStart - b.Index.ByteStart
+		return cmp.Compare(a.Index.ByteStart, b.Index.ByteStart)
 	})
 
 	textCursor := 0
