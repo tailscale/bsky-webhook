@@ -284,6 +284,11 @@ func getBskyProfile(ctx context.Context, bskyMessage BskyMessage, bsky *bluesky.
 		profile.AvatarURL = "https://up.erisa.uk/blueskydefaultavatar.png"
 	}
 
+	// if the user has an invalid (unverified) handle, links with handles will break
+	if profile.Handle == "handle.invalid" {
+		profile.Handle = profile.DID
+	}
+
 	return profile, nil
 }
 
