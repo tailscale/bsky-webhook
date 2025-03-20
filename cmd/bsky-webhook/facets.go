@@ -9,7 +9,7 @@ import (
 
 func (b BskyTextFragment) featureURI() string {
 	for _, feat := range b.Features {
-		switch feat.URI {
+		switch feat.Type {
 		case "app.bsky.richtext.facet#link":
 			return feat.URI
 		case "app.bsky.richtext.facet#mention":
