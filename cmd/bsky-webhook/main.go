@@ -257,6 +257,12 @@ func readJetstreamMessage(ctx context.Context, jetstreamMessageEncoded []byte, b
 				return
 			}
 
+			// ignore users that are muted by the bluesky account running the service
+			if profile.Viewer.Muted {
+				slog.Info("skipped post from muted user", "post", bskyMessage.toURL(&profile.Handle))
+				return
+			}
+
 			var imageURL string
 
 			if len(bskyMessage.Commit.Record.Embed.Images) != 0 {

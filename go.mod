@@ -6,7 +6,7 @@ require (
 	github.com/bluesky-social/jetstream v0.0.0-20241031234625-0ab10bd041fe
 	github.com/gorilla/websocket v1.5.3
 	github.com/klauspost/compress v1.17.11
-	github.com/tailscale/go-bluesky v0.0.0-20241120102717-59cb59520339
+	github.com/tailscale/go-bluesky v0.0.0-20250504220631-079315ca10a1
 	github.com/tailscale/setec v0.0.0-20250205144240-8898a29c3fbb
 	tailscale.com v1.82.0
 )
