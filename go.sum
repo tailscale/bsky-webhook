@@ -275,8 +275,8 @@ github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOf
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/tailscale/certstore v0.1.1-0.20231202035212-d3fa0460f47e h1:PtWT87weP5LWHEY//SWsYkSO3RWRZo4OSWagh3YD2vQ=
 github.com/tailscale/certstore v0.1.1-0.20231202035212-d3fa0460f47e/go.mod h1:XrBNfAFN+pwoWuksbFS9Ccxnopa15zJGgXRFN90l3K4=
-github.com/tailscale/go-bluesky v0.0.0-20241120102717-59cb59520339 h1:0uwPKF5CJ0WvE0VvY2atqQ3HxpkIgU91yQPwLP0Ojfo=
-github.com/tailscale/go-bluesky v0.0.0-20241120102717-59cb59520339/go.mod h1:ts2pWBibN7TJSOhE7DMoIo7iu22DfUEx+p/PNXTKwdU=
+github.com/tailscale/go-bluesky v0.0.0-20250504220631-079315ca10a1 h1:UWqAVyM28ydMo106zC7pIpboBJ7Y7kmHx2ig4mwBlHY=
+github.com/tailscale/go-bluesky v0.0.0-20250504220631-079315ca10a1/go.mod h1:ts2pWBibN7TJSOhE7DMoIo7iu22DfUEx+p/PNXTKwdU=
 github.com/tailscale/go-winio v0.0.0-20231025203758-c4f33415bf55 h1:Gzfnfk2TWrk8Jj4P4c1a3CtQyMaTVCznlkLZI++hok4=
 github.com/tailscale/go-winio v0.0.0-20231025203758-c4f33415bf55/go.mod h1:4k4QO+dQ3R5FofL+SanAUZe+/QfeK0+OIuwDIRu2vSg=
 github.com/tailscale/golang-x-crypto v0.0.0-20250218230618-9a281fd8faca h1:ecjHwH73Yvqf/oIdQ2vxAX+zc6caQsYdPzsxNW1J3G8=
