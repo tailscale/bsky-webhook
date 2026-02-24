@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -42,7 +43,10 @@ var (
 		"https://bsky.social"), "bluesky PDS server URL")
 	watchWord = flag.String("watch-word", envOr("WATCH_WORD", "tailscale"),
 		"the word to watch out for. may be multiple words in future (required)")
-
+	watchWords = flag.String("watch-words", envOr("WATCH_WORDS", ""), // "word1;word2"
+		"the words to watch out for. if watch-word is also specified, they are added")
+	delimiter = flag.String("word-delimiter", envOr("WORD_DELIMITER", ";"),
+		"the character(s) that multi-word options are split by.")
 	secretsURL = flag.String("secrets-url", envOr("SECRETS_URL", ""),
 		"the URL of a secrets server (if empty, no server is used)")
 	secretsPrefix = flag.String("secrets-prefix", envOr("SECRETS_PREFIX", ""),
@@ -51,6 +55,10 @@ var (
 		"the Tailscale hostname the server should advertise (if empty, runs locally)")
 	tsStateDir = flag.String("ts-state-dir", envOr("TS_STATE_DIR", ""),
 		"the Tailscale state directory path (optional)")
+	caseSensitive = flag.Bool("case-sensitive-words", hasEnv("CASE_SENSITIVE_WORDS"),
+		"make watch words case-sensitive")
+	enforceWordBoundary = flag.Bool("enforce-word-boundary", hasEnv("ENFORCE_WORD_BOUNDARY"),
+		"only match \"whole words\", \\b in regex")
 )
 
 // Public addresses of jetstream websocket services.
@@ -92,8 +100,40 @@ func main() {
 		log.Fatal("Missing Bluesky account handle (BSKY_HANDLE)")
 	case *bskyAppKey == "" && *secretsURL == "":
 		log.Fatal("missing Bluesky app secret (BSKY_APP_PASSWORD)")
-	case *watchWord == "":
-		log.Fatal("missing watchword")
+	case *watchWord == "" && *watchWords == "":
+		log.Fatal("missing watchWord and watchWords (WATCH_WORD / WATCH_WORDS)")
+	}
+
+	words := strings.Split(*watchWords, *delimiter)
+	words = append(words, *watchWord)
+
+	if len(words) == 0 {
+		log.Fatal("no words! nothing to do!")
+	}
+
+	// build the regular expression for matching words
+	var rb strings.Builder
+	if *enforceWordBoundary {
+		rb.WriteString("\\b(")
+	}
+	if !*caseSensitive {
+		rb.WriteString("(?i)")
+	}
+
+	// prepare the words for being compiled into regex
+	for i, v := range words {
+		words[i] = "(" + regexp.QuoteMeta(v) + ")"
+	}
+
+	rb.WriteString(strings.Join(words, "|"))
+	if *enforceWordBoundary {
+		rb.WriteString(")\\b")
+	}
+
+	log.Print(rb.String())
+	wordRx, err := regexp.Compile(rb.String())
+	if err != nil {
+		log.Fatalf("compile regex: %v", err)
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -139,12 +179,17 @@ func main() {
 		}
 		slog.Info("ws connecting", "url", wsURL.String())
 
-		err := websocketConnection(ctx, wsURL)
+		err := websocketConnection(ctx, wsURL, *wordRx)
 		slog.Error("ws connection", "url", wsURL, "err", err)
 
 		// TODO(erisa): exponential backoff
 		time.Sleep(2 * time.Second)
 	}
+}
+
+func hasEnv(name string) bool {
+	_, ok := os.LookupEnv(name)
+	return ok
 }
 
 func envOr(key, defaultVal string) string {
@@ -171,7 +216,7 @@ func nextWSAddress() func() string {
 	}
 }
 
-func websocketConnection(ctx context.Context, wsUrl url.URL) error {
+func websocketConnection(ctx context.Context, wsUrl url.URL, wordRx regexp.Regexp) error {
 	// add compression headers
 	headers := http.Header{}
 	headers.Add("Socket-Encoding", "zstd")
@@ -206,7 +251,7 @@ func websocketConnection(ctx context.Context, wsUrl url.URL) error {
 			return err
 		}
 
-		err = readJetstreamMessage(ctx, jetstreamMessage, bsky)
+		err = readJetstreamMessage(ctx, jetstreamMessage, bsky, wordRx)
 		if err != nil {
 			msg := jetstreamMessage[:min(32, len(jetstreamMessage))]
 			log.Printf("error reading jetstream message %q: %v", msg, err)
@@ -216,7 +261,7 @@ func websocketConnection(ctx context.Context, wsUrl url.URL) error {
 	return ctx.Err()
 }
 
-func readJetstreamMessage(ctx context.Context, jetstreamMessageEncoded []byte, bsky *bluesky.Client) error {
+func readJetstreamMessage(ctx context.Context, jetstreamMessageEncoded []byte, bsky *bluesky.Client, wordRx regexp.Regexp) error {
 	// Decompress the message
 	m, err := zstdDecoder.DecodeAll(jetstreamMessageEncoded, nil)
 	if err != nil {
@@ -247,7 +292,7 @@ func readJetstreamMessage(ctx context.Context, jetstreamMessageEncoded []byte, b
 		return nil
 	}
 
-	if strings.Contains(strings.ToLower(bskyMessage.Commit.Record.Text), strings.ToLower(*watchWord)) {
+	if wordRx.MatchString(bskyMessage.Commit.Record.Text) {
 		jetstreamMessageStr := string(jetstreamMessage)
 
 		go func() {
@@ -264,7 +309,6 @@ func readJetstreamMessage(ctx context.Context, jetstreamMessageEncoded []byte, b
 			}
 
 			var imageURL string
-
 			if len(bskyMessage.Commit.Record.Embed.Images) != 0 {
 				imageURL = fmt.Sprintf("https://cdn.bsky.app/img/feed_fullsize/plain/%s/%s", bskyMessage.DID, bskyMessage.Commit.Record.Embed.Images[0].Image.Ref.Link)
 			}
