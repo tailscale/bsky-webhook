@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/bluesky-social/jetstream v0.0.0-20241031234625-0ab10bd041fe
 	github.com/gorilla/websocket v1.5.3
-	github.com/klauspost/compress v1.17.11
+	github.com/klauspost/compress v1.18.7
 	github.com/tailscale/go-bluesky v0.0.0-20250504220631-079315ca10a1
 	github.com/tailscale/setec v0.0.0-20250730204915-c57e4b5e91a2
 	tailscale.com v1.86.5
